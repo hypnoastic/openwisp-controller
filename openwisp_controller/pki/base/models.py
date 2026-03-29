@@ -37,4 +37,5 @@ class AbstractCert(ShareableOrgMixin, UnqiueCommonNameMixin, BaseCert):
         ]
 
     def clean(self):
+        super().clean()
         self._validate_org_relation("ca")

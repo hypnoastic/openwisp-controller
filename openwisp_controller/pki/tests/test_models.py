@@ -47,6 +47,26 @@ class TestModels(TestAdminMixin, TestPkiMixin, TestOrganizationMixin, TestCase):
         with self.assertRaises(ValidationError):
             cert.full_clean()
 
+    def test_cert_full_clean_runs_base_x509_validation(self):
+        ca = self._create_ca()
+        cert = Cert(
+            name="bad-cert",
+            ca=ca,
+            key_length="2048",
+            digest="sha256",
+            country_code="IT",
+            state="RM",
+            city="Rome",
+            organization_name="OpenWISP",
+            email="test@test.com",
+            common_name="bad-cert.openwisp.org",
+            organization=None,
+            extensions=[{"name": "nsComment"}],
+        )
+        with self.assertRaises(ValidationError) as context_manager:
+            cert.full_clean()
+        self.assertIn("Extension format invalid", str(context_manager.exception))
+
     def test_crl_view(self):
         self._login()
         ca = self._create_ca()

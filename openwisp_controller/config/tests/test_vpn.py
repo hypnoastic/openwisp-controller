@@ -114,6 +114,22 @@ class TestVpn(BaseTestVpn, TestCase):
         ]
         self.assertEqual(vpn.cert.extensions, server_extensions)
 
+    def test_server_cert_inherits_template_subject_defaults(self):
+        vpn = self._create_vpn(
+            ca_options={"organizational_unit_name": "Infrastructure"}
+        )
+        self.assertEqual(vpn.cert.organizational_unit_name, "Infrastructure")
+
+    def test_server_auto_cert_validation_error_propagates(self):
+        with mock.patch.object(
+            Cert,
+            "full_clean",
+            side_effect=ValidationError({"common_name": ["invalid common name"]}),
+        ):
+            with self.assertRaises(ValidationError) as context_manager:
+                self._create_vpn()
+        self.assertIn("common_name", context_manager.exception.message_dict)
+
     def test_vpn_client_unique_together(self):
         org = self._get_org()
         vpn = self._create_vpn()
@@ -297,6 +313,24 @@ class TestVpn(BaseTestVpn, TestCase):
         )
         d.name = d.mac_address
         self.assertIn(d.mac_address, client._get_common_name())
+
+    def test_client_cert_inherits_template_subject_defaults(self):
+        org = self._get_org()
+        vpn = self._create_vpn(
+            organization=org,
+            ca_options={"organization": org, "organizational_unit_name": "Devices"},
+        )
+        t = self._create_template(
+            name="vpn-test",
+            type="vpn",
+            vpn=vpn,
+            auto_cert=True,
+            organization=org,
+        )
+        c = self._create_config(organization=org)
+        c.templates.add(t)
+        vpnclient = c.vpnclient_set.first()
+        self.assertEqual(vpnclient.cert.organizational_unit_name, "Devices")
 
     def test_get_auto_context_keys(self):
         vpn = self._create_vpn()

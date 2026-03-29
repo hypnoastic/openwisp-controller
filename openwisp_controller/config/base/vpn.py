@@ -417,20 +417,18 @@ class AbstractVpn(ConfigChecksumCacheMixin, ShareableOrgMixinUniqueName, BaseCon
             {"name": "nsCertType", "value": "server", "critical": False}
         ]
         cert_model = self.__class__.cert.field.related_model
-        cert = cert_model(
-            name=self.name,
-            ca=self.ca,
-            key_length=self.ca.key_length,
-            digest=self.ca.digest,
-            country_code=self.ca.country_code,
-            state=self.ca.state,
-            city=self.ca.city,
-            organization_name=self.ca.organization_name,
-            email=self.ca.email,
-            common_name=common_name,
-            extensions=server_extensions,
+        cert_options = self.ca.get_template_data()
+        cert_options.update(
+            {
+                "name": self.name,
+                "ca": self.ca,
+                "common_name": common_name,
+                "extensions": server_extensions,
+            }
         )
+        cert = cert_model(**cert_options)
         cert = self._auto_create_cert_extra(cert)
+        cert.full_clean()
         cert.save()
         return cert
 
@@ -962,19 +960,16 @@ class AbstractVpnClient(models.Model):
         ]
         ca = self.vpn.ca
         cert_model = self.__class__.cert.field.related_model
-        cert = cert_model(
-            name=name,
-            ca=ca,
-            key_length=ca.key_length,
-            digest=str(ca.digest),
-            country_code=ca.country_code,
-            state=ca.state,
-            city=ca.city,
-            organization_name=ca.organization_name,
-            email=ca.email,
-            common_name=common_name,
-            extensions=server_extensions,
+        cert_options = ca.get_template_data()
+        cert_options.update(
+            {
+                "name": name,
+                "ca": ca,
+                "common_name": common_name,
+                "extensions": server_extensions,
+            }
         )
+        cert = cert_model(**cert_options)
         cert = self._auto_create_cert_extra(cert)
         cert.full_clean()
         cert.save()
